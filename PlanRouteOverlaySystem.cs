@@ -202,6 +202,35 @@ namespace AutoBusLines
 
         private Entity FindNearestRoad(float3 position, float maxRadius = 120f)
         {
+            var roadScanner = World.GetExistingSystemManaged<RoadNetworkScanner>();
+            if (roadScanner != null && roadScanner.DrivableSegments.IsCreated && roadScanner.DrivableSegments.Length > 0)
+            {
+                var drivable = roadScanner.DrivableSegments;
+                Entity bestDrivable = Entity.Null;
+                float bestDistSqDrivable = maxRadius * maxRadius;
+
+                for (int i = 0; i < drivable.Length; i++)
+                {
+                    var roadEnt = drivable[i];
+                    if (!EntityManager.HasComponent<Curve>(roadEnt))
+                        continue;
+
+                    var curve = EntityManager.GetComponentData<Curve>(roadEnt);
+                    Bounds3 bounds = MathUtils.Bounds(curve.m_Bezier);
+                    if (MathUtils.DistanceSquared(bounds, position) > bestDistSqDrivable)
+                        continue;
+
+                    float distSq = MathUtils.DistanceSquared(curve.m_Bezier, position, out float _);
+                    if (distSq < bestDistSqDrivable)
+                    {
+                        bestDistSqDrivable = distSq;
+                        bestDrivable = roadEnt;
+                    }
+                }
+                if (bestDrivable != Entity.Null)
+                    return bestDrivable;
+            }
+
             if (m_RoadQuery.IsEmptyIgnoreFilter)
                 return Entity.Null;
 

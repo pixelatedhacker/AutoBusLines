@@ -272,7 +272,7 @@ namespace AutoBusLines
             var index = new Dictionary<long, int>();
             var heap = new IntMinHeap();
 
-            Action<DirectedRoadEdge, float, int> relax = (edge, g, prev) =>
+            void Relax(DirectedRoadEdge edge, float g, int prev)
             {
                 long key = EdgeStateKey(edge);
                 float h = 0f;
@@ -297,14 +297,14 @@ namespace AutoBusLines
                     states.Add(new SearchState { Edge = edge, G = g, Prev = prev, Closed = false });
                 }
                 heap.Enqueue(id, g + h);
-            };
+            }
 
             for (int i = 0; i < startEdges.Count; i++)
             {
                 var e = startEdges[i];
                 if (!CanTurn(startNode, initialHeading, e.TangentAtFrom))
                     continue;
-                relax(e, e.Length, -1);
+                Relax(e, e.Length, -1);
             }
 
             int goal = -1;
@@ -336,7 +336,7 @@ namespace AutoBusLines
                     var next = outs[i];
                     if (!CanTurn(cur.ToNode, cur.TangentAtTo, next.TangentAtFrom))
                         continue;
-                    relax(next, st.G + next.Length, id);
+                    Relax(next, st.G + next.Length, id);
                 }
             }
 

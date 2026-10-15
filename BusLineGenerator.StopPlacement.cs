@@ -673,30 +673,18 @@ namespace AutoBusLines
                 return false;
 
             // Rotation: bus stop should face directly toward the road centerline from the curb
-            float3 toRoad;
+            float3 toRoad = float3.zero;
             if (EntityManager.HasComponent<Curve>(roadEntity))
             {
                 var roadCurve = EntityManager.GetComponentData<Curve>(roadEntity);
                 float3 roadCenter = MathUtils.Position(roadCurve.m_Bezier, t);
                 toRoad = math.normalizesafe(new float3(roadCenter.x - pos.x, 0f, roadCenter.z - pos.z));
             }
-            else
-            {
-                bool isLeftHandTraffic = false;
-                var cityConfig = World.GetExistingSystemManaged<Game.City.CityConfigurationSystem>();
-                if (cityConfig != null)
-                    isLeftHandTraffic = cityConfig.leftHandTraffic;
-                float3 curbNormal = isLeftHandTraffic 
-                    ? new float3(-forward.z, 0f, forward.x) 
-                    : new float3(forward.z, 0f, -forward.x);
-                toRoad = -curbNormal;
-            }
+
             if (math.lengthsq(toRoad) < 0.001f)
             {
-                bool isLeftHandTraffic = false;
                 var cityConfig = World.GetExistingSystemManaged<Game.City.CityConfigurationSystem>();
-                if (cityConfig != null)
-                    isLeftHandTraffic = cityConfig.leftHandTraffic;
+                bool isLeftHandTraffic = cityConfig != null && cityConfig.leftHandTraffic;
                 float3 curbNormal = isLeftHandTraffic 
                     ? new float3(-forward.z, 0f, forward.x) 
                     : new float3(forward.z, 0f, -forward.x);
@@ -1175,15 +1163,18 @@ namespace AutoBusLines
                 SpanEdge bestEdge = spanEdges[0];
                 float targetSpanDist = totalLength * 0.5f;
 
-                // 1. Identify eligible edges with length >= 42m (room for 20m start clearance + 22m end clearance)
-                var eligibleEdges = new List<SpanEdge>();
+                // 1. Identify if any edge has length >= 42m (room for 20m start clearance + 22m end clearance)
+                bool hasEligibleEdge = false;
                 for (int e = 0; e < spanEdges.Count; e++)
                 {
                     if (spanEdges[e].Length >= 42.0f)
-                        eligibleEdges.Add(spanEdges[e]);
+                    {
+                        hasEligibleEdge = true;
+                        break;
+                    }
                 }
 
-                if (eligibleEdges.Count > 0)
+                if (hasEligibleEdge)
                 {
                     // Pick the eligible edge whose center is closest to span midpoint
                     float bestSpanDistDiff = float.MaxValue;
@@ -1192,7 +1183,7 @@ namespace AutoBusLines
                     {
                         var se = spanEdges[e];
                         float edgeCenterSpanDist = accDist + se.Length * 0.5f;
-                        if (eligibleEdges.Contains(se))
+                        if (se.Length >= 42.0f)
                         {
                             float diff = math.abs(edgeCenterSpanDist - targetSpanDist);
                             if (diff < bestSpanDistDiff)

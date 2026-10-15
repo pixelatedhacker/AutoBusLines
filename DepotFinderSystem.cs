@@ -208,6 +208,14 @@ namespace AutoBusLines
             publicStationPrefabRefs.Dispose();
             publicStationTransforms.Dispose();
 
+            var candidateStationSet = new HashSet<Entity>(candidateStationEntities);
+            var busDepotsSet = new HashSet<Entity>();
+            for (int d = 0; d < BusDepots.Length; d++)
+                busDepotsSet.Add(BusDepots[d]);
+            var busStationsSet = new HashSet<Entity>();
+            for (int b = 0; b < BusStations.Length; b++)
+                busStationsSet.Add(BusStations[b]);
+
             // 3. Scan Bus Stops to find platform bays belonging to Stations / Depots
             var stopEntities = _busStopQuery.ToEntityArray(Allocator.Temp);
             var stopPrefabRefs = _busStopQuery.ToComponentDataArray<PrefabRef>(Allocator.Temp);
@@ -243,9 +251,9 @@ namespace AutoBusLines
                     }
                 }
 
-                if (ownerEntity != Entity.Null && candidateStationEntities.Contains(ownerEntity))
+                if (ownerEntity != Entity.Null && candidateStationSet.Contains(ownerEntity))
                 {
-                    if (!BusStations.Contains(ownerEntity))
+                    if (busStationsSet.Add(ownerEntity))
                     {
                         int sIdx = candidateStationEntities.IndexOf(ownerEntity);
                         BusStations.Add(ownerEntity);
@@ -258,7 +266,7 @@ namespace AutoBusLines
                     StationPlatformStops.Add(stopEntity);
                     log.Info($"-> Registered Platform Bay Stop {stopEntity.Index} for Bus Station {ownerEntity.Index}");
                 }
-                else if (ownerEntity != Entity.Null && BusDepots.Contains(ownerEntity))
+                else if (ownerEntity != Entity.Null && busDepotsSet.Contains(ownerEntity))
                 {
                     StationToPlatforms[ownerEntity].Add(stopEntity);
                     StationPlatformStops.Add(stopEntity);
@@ -288,7 +296,7 @@ namespace AutoBusLines
                                 var stopData = EntityManager.GetComponentData<TransportStopData>(prefab);
                                 if (stopData.m_TransportType == TransportType.Bus && stopData.m_PassengerTransport)
                                 {
-                                    if (!BusStations.Contains(stEntity))
+                                    if (busStationsSet.Add(stEntity))
                                     {
                                         BusStations.Add(stEntity);
                                         AllHubs.Add(new HubInfo { HubEntity = stEntity, Position = candidateStationPositions[s], IsStation = true });
@@ -333,7 +341,7 @@ namespace AutoBusLines
                                         var stopData = EntityManager.GetComponentData<TransportStopData>(prefab);
                                         if (stopData.m_TransportType == TransportType.Bus && stopData.m_PassengerTransport)
                                         {
-                                            if (!BusStations.Contains(stEntity))
+                                            if (busStationsSet.Add(stEntity))
                                             {
                                                 BusStations.Add(stEntity);
                                                 AllHubs.Add(new HubInfo { HubEntity = stEntity, Position = candidateStationPositions[s], IsStation = true });

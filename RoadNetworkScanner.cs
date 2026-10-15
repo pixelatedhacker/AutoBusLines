@@ -113,6 +113,9 @@ namespace AutoBusLines
             entities.Dispose();
         }
 
+        private readonly System.Collections.Generic.Dictionary<Entity, bool> _highwayPrefabCache = new System.Collections.Generic.Dictionary<Entity, bool>();
+        private readonly System.Collections.Generic.Dictionary<Entity, bool> _gravelPrefabCache = new System.Collections.Generic.Dictionary<Entity, bool>();
+
         private bool IsHighwayOrRamp(Entity roadEntity)
         {
             if (EntityManager.HasComponent<PrefabRef>(roadEntity))
@@ -122,6 +125,10 @@ namespace AutoBusLines
 
                 if (prefabEntity != Entity.Null)
                 {
+                    if (_highwayPrefabCache.TryGetValue(prefabEntity, out bool cached))
+                        return cached;
+
+                    bool isHighway = false;
                     if (_prefabSystem != null)
                     {
                         if (_prefabSystem.TryGetPrefab<PrefabBase>(prefabEntity, out var prefabBase) && prefabBase != null)
@@ -129,21 +136,23 @@ namespace AutoBusLines
                             // 1. Check if RoadPrefab has m_HighwayRules == true
                             if (prefabBase is RoadPrefab roadPrefab && roadPrefab.m_HighwayRules)
                             {
-                                return true;
+                                isHighway = true;
                             }
-
-                            // 2. Check prefab name for highway, freeway, motorway, and ramp keywords
-                            string name = prefabBase.name;
-                            if (!string.IsNullOrEmpty(name))
+                            else
                             {
-                                if (name.IndexOf("Highway", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                    name.IndexOf("Freeway", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                    name.IndexOf("Motorway", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                    name.IndexOf("Ramp", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                    name.IndexOf("Sliproad", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                    name.IndexOf("Interchange", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                                // 2. Check prefab name for highway, freeway, motorway, and ramp keywords
+                                string name = prefabBase.name;
+                                if (!string.IsNullOrEmpty(name))
                                 {
-                                    return true;
+                                    if (name.IndexOf("Highway", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                        name.IndexOf("Freeway", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                        name.IndexOf("Motorway", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                        name.IndexOf("Ramp", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                        name.IndexOf("Sliproad", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                        name.IndexOf("Interchange", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                                    {
+                                        isHighway = true;
+                                    }
                                 }
                             }
                         }
@@ -159,11 +168,14 @@ namespace AutoBusLines
                                     pName.IndexOf("Sliproad", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
                                     pName.IndexOf("Interchange", System.StringComparison.OrdinalIgnoreCase) >= 0)
                                 {
-                                    return true;
+                                    isHighway = true;
                                 }
                             }
                         }
                     }
+
+                    _highwayPrefabCache[prefabEntity] = isHighway;
+                    return isHighway;
                 }
             }
 
@@ -194,19 +206,24 @@ namespace AutoBusLines
 
                 if (prefabEntity != Entity.Null)
                 {
+                    if (_gravelPrefabCache.TryGetValue(prefabEntity, out bool cached))
+                        return cached;
+
+                    bool isGravel = false;
+
                     // Check if the prefab has NetCompositionData
                     if (EntityManager.HasComponent<NetCompositionData>(prefabEntity))
                     {
                         var compData = EntityManager.GetComponentData<NetCompositionData>(prefabEntity);
                         if ((compData.m_Flags.m_General & CompositionFlags.General.Gravel) != 0)
                         {
-                            return true;
+                            isGravel = true;
                         }
                     }
 
-                    // Check prefab name via PrefabSystem
-                    if (_prefabSystem != null)
+                    if (!isGravel && _prefabSystem != null)
                     {
+                        // Check prefab name via PrefabSystem
                         if (_prefabSystem.TryGetPrefab<PrefabBase>(prefabEntity, out var prefabBase) && prefabBase != null)
                         {
                             string name = prefabBase.name;
@@ -216,7 +233,7 @@ namespace AutoBusLines
                                     name.IndexOf("Dirt", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
                                     name.IndexOf("Unpaved", System.StringComparison.OrdinalIgnoreCase) >= 0)
                                 {
-                                    return true;
+                                    isGravel = true;
                                 }
                             }
                         }
@@ -229,11 +246,14 @@ namespace AutoBusLines
                                     pName.IndexOf("Dirt", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
                                     pName.IndexOf("Unpaved", System.StringComparison.OrdinalIgnoreCase) >= 0)
                                 {
-                                    return true;
+                                    isGravel = true;
                                 }
                             }
                         }
                     }
+
+                    _gravelPrefabCache[prefabEntity] = isGravel;
+                    return isGravel;
                 }
             }
 
@@ -251,6 +271,8 @@ namespace AutoBusLines
             _hasRun = false;
             _frameThrottleCounter = 0;
             _lastLoggedRoadCount = -1;
+            _highwayPrefabCache.Clear();
+            _gravelPrefabCache.Clear();
             if (RoadSegments.IsCreated)
                 RoadSegments.Clear();
             if (DrivableSegments.IsCreated)

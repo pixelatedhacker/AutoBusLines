@@ -41,6 +41,10 @@ namespace AutoBusLines
                 return;
 
             _roadToDepot.Clear();
+            if (_roadToDepot.Capacity < _roadScanner.RoadSegments.Length)
+            {
+                _roadToDepot.Capacity = math.max(1000, _roadScanner.RoadSegments.Length);
+            }
 
             // Assign each road to nearest Hub (Bus Station or Bus Depot)
             int assignedCount = 0;
@@ -83,8 +87,11 @@ namespace AutoBusLines
 
                 if (nearestHub != Entity.Null)
                 {
-                    _roadToDepot.Add(roadEntity, nearestHub);
-                    assignedCount++;
+                    if (!_roadToDepot.ContainsKey(roadEntity))
+                    {
+                        _roadToDepot.Add(roadEntity, nearestHub);
+                        assignedCount++;
+                    }
                 }
             }
 

@@ -540,7 +540,7 @@ namespace AutoBusLines
 
             if (!m_DistrictQuery.IsEmptyIgnoreFilter)
             {
-                var entities = m_DistrictQuery.ToEntityArray(Allocator.Temp);
+                using var entities = m_DistrictQuery.ToEntityArray(Allocator.Temp);
                 var nameSystem = World.GetOrCreateSystemManaged<Game.UI.NameSystem>();
 
                 for (int i = 0; i < entities.Length; i++)
@@ -553,7 +553,6 @@ namespace AutoBusLines
                     }
                     list.Add(new { id = e.Index, name = dName });
                 }
-                entities.Dispose();
             }
 
             string json = JsonConvert.SerializeObject(list);

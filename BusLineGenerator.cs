@@ -1,4 +1,4 @@
-// AutoBusLines v2.0.5 - Modular transit planning and generation system
+// AutoBusLines v2.0.6 - Modular transit planning and generation system
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,6 +32,7 @@ namespace AutoBusLines
         private const int ROUTES_PER_FRAME = 2;
 
         public int TargetDistrictId { get; set; } = 0;
+        private readonly Dictionary<Entity, float4> _districtBoundsCache = new Dictionary<Entity, float4>();
 
         public Entity FindDistrictEntity(int districtId)
         {
@@ -84,22 +85,27 @@ namespace AutoBusLines
 
             float2 p = worldPos.xz;
 
-            // Fast Bounding Box Pre-Check
-            float minX = float.MaxValue, maxX = float.MinValue;
-            float minZ = float.MaxValue, maxZ = float.MinValue;
-            for (int i = 0; i < nodes.Length; i++)
+            // Fast Bounding Box Pre-Check (cached per district entity)
+            if (!_districtBoundsCache.TryGetValue(districtEntity, out float4 bounds))
             {
-                float2 np = nodes[i].m_Position.xz;
-                if (np.x < minX) minX = np.x;
-                if (np.x > maxX) maxX = np.x;
-                if (np.y < minZ) minZ = np.y;
-                if (np.y > maxZ) maxZ = np.y;
+                float minX = float.MaxValue, maxX = float.MinValue;
+                float minZ = float.MaxValue, maxZ = float.MinValue;
+                for (int i = 0; i < nodes.Length; i++)
+                {
+                    float2 np = nodes[i].m_Position.xz;
+                    if (np.x < minX) minX = np.x;
+                    if (np.x > maxX) maxX = np.x;
+                    if (np.y < minZ) minZ = np.y;
+                    if (np.y > maxZ) maxZ = np.y;
+                }
+                bounds = new float4(minX, maxX, minZ, maxZ);
+                _districtBoundsCache[districtEntity] = bounds;
             }
 
             // Expand bounds slightly to account for road widths and curb offsets (approx 35m)
             const float kMargin = 35f;
-            if (p.x < minX - kMargin || p.x > maxX + kMargin ||
-                p.y < minZ - kMargin || p.y > maxZ + kMargin)
+            if (p.x < bounds.x - kMargin || p.x > bounds.y + kMargin ||
+                p.y < bounds.z - kMargin || p.y > bounds.w + kMargin)
             {
                 return false;
             }
@@ -302,11 +308,26 @@ namespace AutoBusLines
             public float3 OutwardTangent;
         }
 
-        private struct SpanEdge
+        private struct SpanEdge : IEquatable<SpanEdge>
         {
             public Entity EdgeEntity;
             public bool IsReversed;
             public float Length;
+
+            public bool Equals(SpanEdge other)
+            {
+                return EdgeEntity == other.EdgeEntity && IsReversed == other.IsReversed;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is SpanEdge other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                return unchecked((EdgeEntity.GetHashCode() * 397) ^ IsReversed.GetHashCode());
+            }
         }
 
         private class BlockSpan
@@ -439,6 +460,7 @@ namespace AutoBusLines
             _depotFinder?.Reset();
             _roadScanner?.Reset();
             _roadAssigner?.Reset();
+            _districtBoundsCache.Clear();
         }
 
         private void CleanLegacySubObjectStops()
@@ -693,6 +715,7 @@ namespace AutoBusLines
         }
         private void ExecuteGeneration(bool planOnly, int seedOffset, bool autoOpenPanel)
         {
+            _districtBoundsCache.Clear();
             if (_depotFinder == null) _depotFinder = World.GetOrCreateSystemManaged<DepotFinderSystem>();
             if (_roadScanner == null) _roadScanner = World.GetOrCreateSystemManaged<RoadNetworkScanner>();
             if (_roadAssigner == null) _roadAssigner = World.GetOrCreateSystemManaged<RoadDepotAssigner>();
