@@ -104,6 +104,14 @@ namespace AutoBusLines
         [SettingsUIHidden]
         public int ExpressStopSpacing { get; set; } = 1000;
 
+        // Bus prefab names new local and express lines are set to run. Empty keeps the game's
+        // random choice, so existing behaviour is unchanged unless a model is picked.
+        [SettingsUIHidden]
+        public string LocalBusModel { get; set; } = "";
+
+        [SettingsUIHidden]
+        public string ExpressBusModel { get; set; } = "";
+
         private LineColorMode _lineColoring = LineColorMode.PerStation;
 
         [SettingsUIHidden]
@@ -200,6 +208,8 @@ namespace AutoBusLines
             MaxRouteLength = 15000;
             EnableExpressLines = false;
             ExpressStopSpacing = 1000;
+            LocalBusModel = "";
+            ExpressBusModel = "";
             StopDensity = StopDensityMode.Balanced;
             TargetStopSpacing = 200;
         }

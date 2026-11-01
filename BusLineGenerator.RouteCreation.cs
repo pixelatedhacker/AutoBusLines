@@ -1070,6 +1070,7 @@ namespace AutoBusLines
             var virtualToRealEntityMap = new Dictionary<int, Entity>();
             var toursToBuild = new List<List<PlacedStop>>();
             _plannedTourColors = new List<Color32>();
+            _plannedTourIsExpress = new List<bool>();
             int totalNewStopsBuilt = 0;
 
             for (int r = 0; r < _activePlan.Count; r++)
@@ -1147,6 +1148,7 @@ namespace AutoBusLines
                 {
                     toursToBuild.Add(tourStops);
                     _plannedTourColors.Add(HexToColor(route.Color));
+                    _plannedTourIsExpress.Add(route.IsExpress);
                 }
                 else
                 {
@@ -1569,7 +1571,7 @@ namespace AutoBusLines
             return len * 1.25f; // Grid and curve driving factor
         }
 
-        private bool CreateBusLine(Entity busLinePrefabEntity, RouteData routeData, List<PlacedStop> orderedStops, int lineNumber, int hubIndex = 0, int tourIndex = 0, Color32? customColor = null)
+        private bool CreateBusLine(Entity busLinePrefabEntity, RouteData routeData, List<PlacedStop> orderedStops, int lineNumber, int hubIndex = 0, int tourIndex = 0, Color32? customColor = null, bool isExpress = false)
         {
             if (orderedStops == null || orderedStops.Count == 0)
                 return false;
@@ -1755,6 +1757,7 @@ namespace AutoBusLines
             if (!EntityManager.HasComponent<BatchesUpdated>(routeEntity))
                 EntityManager.AddComponentData(routeEntity, default(BatchesUpdated));
 
+            QueueVehicleModel(routeEntity, isExpress);
             return true;
         }
     }

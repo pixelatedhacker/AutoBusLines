@@ -40,6 +40,9 @@ namespace AutoBusLines
         private ValueBinding<int> m_MaxRouteLength;
         private ValueBinding<bool> m_EnableExpressLines;
         private ValueBinding<int> m_ExpressStopSpacing;
+        private ValueBinding<string> m_LocalBusModel;
+        private ValueBinding<string> m_ExpressBusModel;
+        private ValueBinding<string> m_BusModelOptions; // JSON array of { name, label, icon }
         private ValueBinding<string> m_StopDensity;
         private ValueBinding<int> m_TargetStopSpacing;
         private ValueBinding<string> m_SelectedStopPrefab;
@@ -69,6 +72,9 @@ namespace AutoBusLines
             AddBinding(m_MaxRouteLength = new ValueBinding<int>(kGroup, "maxRouteLength", s?.MaxRouteLength ?? 15000));
             AddBinding(m_EnableExpressLines = new ValueBinding<bool>(kGroup, "enableExpressLines", s?.EnableExpressLines ?? false));
             AddBinding(m_ExpressStopSpacing = new ValueBinding<int>(kGroup, "expressStopSpacing", s?.ExpressStopSpacing ?? 1000));
+            AddBinding(m_LocalBusModel = new ValueBinding<string>(kGroup, "localBusModel", s?.LocalBusModel ?? ""));
+            AddBinding(m_ExpressBusModel = new ValueBinding<string>(kGroup, "expressBusModel", s?.ExpressBusModel ?? ""));
+            AddBinding(m_BusModelOptions = new ValueBinding<string>(kGroup, "busModelOptions", "[]"));
             AddBinding(m_StopDensity = new ValueBinding<string>(kGroup, "stopDensity", (s?.StopDensity ?? StopDensityMode.Balanced).ToString()));
             AddBinding(m_TargetStopSpacing = new ValueBinding<int>(kGroup, "targetStopSpacing", s?.TargetStopSpacing ?? 200));
             AddBinding(m_SelectedStopPrefab = new ValueBinding<string>(kGroup, "selectedStopPrefab", s?.SelectedStopPrefab ?? "All"));
@@ -97,6 +103,8 @@ namespace AutoBusLines
             AddBinding(new TriggerBinding<int>(kGroup, "setMaxRouteLength", OnSetMaxRouteLength));
             AddBinding(new TriggerBinding<bool>(kGroup, "setEnableExpressLines", OnSetEnableExpressLines));
             AddBinding(new TriggerBinding<int>(kGroup, "setExpressStopSpacing", OnSetExpressStopSpacing));
+            AddBinding(new TriggerBinding<string>(kGroup, "setLocalBusModel", OnSetLocalBusModel));
+            AddBinding(new TriggerBinding<string>(kGroup, "setExpressBusModel", OnSetExpressBusModel));
             AddBinding(new TriggerBinding<string>(kGroup, "setStopDensity", OnSetStopDensity));
             AddBinding(new TriggerBinding<int>(kGroup, "setTargetSpacing", OnSetTargetSpacing));
             AddBinding(new TriggerBinding<string>(kGroup, "setStopPrefab", OnSetStopPrefab));
@@ -408,6 +416,52 @@ namespace AutoBusLines
             log.Info($"Set ExpressStopSpacing: {value}m");
         }
 
+        private void OnSetLocalBusModel(string prefabName)
+        {
+            prefabName = prefabName ?? "";
+            if (Mod.setting != null)
+            {
+                Mod.setting.LocalBusModel = prefabName;
+                Mod.setting.Apply();
+            }
+            m_LocalBusModel.Update(prefabName);
+            log.Info($"Set LocalBusModel: '{prefabName}'");
+        }
+
+        private void OnSetExpressBusModel(string prefabName)
+        {
+            prefabName = prefabName ?? "";
+            if (Mod.setting != null)
+            {
+                Mod.setting.ExpressBusModel = prefabName;
+                Mod.setting.Apply();
+            }
+            m_ExpressBusModel.Update(prefabName);
+            log.Info($"Set ExpressBusModel: '{prefabName}'");
+        }
+
+        /// <summary>
+        /// Push the bus models a generated line can run to the UI, with localized names and thumbnails.
+        /// </summary>
+        public void UpdateBusModelOptions()
+        {
+            var generator = World.GetExistingSystemManaged<BusLineGenerator>();
+            if (generator == null) return;
+
+            var imageSystem = World.GetOrCreateSystemManaged<ImageSystem>();
+            var dictionary = Game.SceneFlow.GameManager.instance?.localizationManager?.activeDictionary;
+            var list = new List<object>();
+            foreach (var option in generator.ListBusModels())
+            {
+                string label = option.Name;
+                if (dictionary != null && dictionary.TryGetValue($"Assets.NAME[{option.Name}]", out string localized) && !string.IsNullOrEmpty(localized))
+                    label = localized;
+                string icon = imageSystem.GetThumbnail(option.Prefab) ?? imageSystem.placeholderIcon;
+                list.Add(new { name = option.Name, label = label, icon = icon });
+            }
+            m_BusModelOptions?.Update(JsonConvert.SerializeObject(list));
+        }
+
         private void OnSetDeadEndThreshold(int value)
         {
             value = Math.Max(50, Math.Min(2000, value));
@@ -656,6 +710,9 @@ namespace AutoBusLines
             m_MaxRouteLength?.Update(s.MaxRouteLength);
             m_EnableExpressLines?.Update(s.EnableExpressLines);
             m_ExpressStopSpacing?.Update(s.ExpressStopSpacing);
+            m_LocalBusModel?.Update(s.LocalBusModel ?? "");
+            m_ExpressBusModel?.Update(s.ExpressBusModel ?? "");
+            UpdateBusModelOptions();
             m_StopDensity?.Update(s.StopDensity.ToString());
             m_TargetStopSpacing?.Update(s.TargetStopSpacing);
             m_SelectedStopPrefab?.Update(s.SelectedStopPrefab);

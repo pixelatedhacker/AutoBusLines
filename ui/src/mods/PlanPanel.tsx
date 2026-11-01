@@ -36,6 +36,12 @@ interface StopModelOption {
     icon: string;
 }
 
+interface BusModelOption {
+    name: string;
+    label: string;
+    icon: string;
+}
+
 const planStatusBinding = bindValue<string>("autoBusLines", "planStatus", "idle");
 const planJsonBinding = bindValue<string>("autoBusLines", "planJson", "[]");
 const statusMessageBinding = bindValue<string>("autoBusLines", "statusMessage", "");
@@ -51,6 +57,9 @@ const maxStopsBinding = bindValue<number>("autoBusLines", "maxStopsPerLine", 18)
 const maxRouteLengthBinding = bindValue<number>("autoBusLines", "maxRouteLength", 15000);
 const enableExpressLinesBinding = bindValue<boolean>("autoBusLines", "enableExpressLines", false);
 const expressStopSpacingBinding = bindValue<number>("autoBusLines", "expressStopSpacing", 1000);
+const localBusModelBinding = bindValue<string>("autoBusLines", "localBusModel", "");
+const expressBusModelBinding = bindValue<string>("autoBusLines", "expressBusModel", "");
+const busModelOptionsBinding = bindValue<string>("autoBusLines", "busModelOptions", "[]");
 const stopDensityBinding = bindValue<string>("autoBusLines", "stopDensity", "Balanced");
 const targetSpacingBinding = bindValue<number>("autoBusLines", "targetStopSpacing", 200);
 const selectedPrefabBinding = bindValue<string>("autoBusLines", "selectedStopPrefab", "All");
@@ -293,6 +302,9 @@ export const PlanPanel: React.FC<PlanPanelProps> = ({ onClose }) => {
     const maxRouteLength = useValue(maxRouteLengthBinding);
     const enableExpressLines = useValue(enableExpressLinesBinding);
     const expressStopSpacing = useValue(expressStopSpacingBinding);
+    const localBusModel = useValue(localBusModelBinding);
+    const expressBusModel = useValue(expressBusModelBinding);
+    const busModelOptionsJson = useValue(busModelOptionsBinding);
     const stopDensity = useValue(stopDensityBinding);
     const targetSpacing = useValue(targetSpacingBinding);
     const selectedPrefab = useValue(selectedPrefabBinding);
@@ -429,6 +441,48 @@ export const PlanPanel: React.FC<PlanPanelProps> = ({ onClose }) => {
         const allNames = prefabOptions.map(o => o.name);
         trigger("autoBusLines", "setStopPrefab", allNames.join(","));
     };
+
+    const busModelOptions: BusModelOption[] = useMemo(() => {
+        try {
+            const parsed = JSON.parse(busModelOptionsJson);
+            return Array.isArray(parsed) ? parsed.filter((o: any) => o && o.name) : [];
+        } catch {
+            return [];
+        }
+    }, [busModelOptionsJson]);
+
+    // An empty name means "let the game pick", the behaviour before this setting existed.
+    const renderBusModelGrid = (selected: string, triggerName: string) => (
+        <div className={styles.prefabGrid}>
+            {[{ name: "", label: "Any bus", icon: "Media/Game/Icons/BusStop.svg" }, ...busModelOptions].map((opt) => {
+                const isSelected = (selected || "") === opt.name;
+                return (
+                    <div
+                        key={opt.name || "any"}
+                        className={`${styles.prefabCard} ${isSelected ? styles.prefabActive : ""}`}
+                        onClick={() => trigger("autoBusLines", triggerName, opt.name)}
+                    >
+                        <div className={styles.prefabThumbnail}>
+                            {opt.name ? (
+                                <img src={opt.icon} className={styles.prefabModelImg} alt={opt.label} />
+                            ) : (
+                                <div className={styles.prefabLogoWrapper}>
+                                    <Icon src={opt.icon} className={styles.prefabLogoIcon} />
+                                </div>
+                            )}
+                            <div className={`${styles.prefabCheckBadge} ${isSelected ? styles.prefabCheckBadgeChecked : ""}`}>
+                                {isSelected && <Icon src="Media/Glyphs/Checkmark.svg" className={styles.prefabCheckIcon} tinted={true} />}
+                            </div>
+                        </div>
+                        <div className={styles.prefabInfo}>
+                            <span className={styles.prefabName}>{opt.label}</span>
+                            <span className={styles.prefabSubtitle}>{opt.name ? opt.name : "Game picks at random"}</span>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
 
     const densityModes = ["Balanced", "Dense", "Ultra", "Low", "Custom"];
 
@@ -980,6 +1034,28 @@ export const PlanPanel: React.FC<PlanPanelProps> = ({ onClose }) => {
                                     </button>
                                 ))}
                             </div>
+                        </div>
+                    )}
+
+                    <div className={styles.settingsRowStacked}>
+                        <div className={styles.settingInfo}>
+                            <span className={styles.settingTitle}>Local Line Buses</span>
+                            <span className={styles.settingDesc}>
+                                Bus model new local lines run. You can still change each line in its info panel.
+                            </span>
+                        </div>
+                        {renderBusModelGrid(localBusModel, "setLocalBusModel")}
+                    </div>
+
+                    {enableExpressLines && (
+                        <div className={styles.settingsRowStacked}>
+                            <div className={styles.settingInfo}>
+                                <span className={styles.settingTitle}>Express Line Buses</span>
+                                <span className={styles.settingDesc}>
+                                    Bus model new express lines run, for example articulated buses for long express loops.
+                                </span>
+                            </div>
+                            {renderBusModelGrid(expressBusModel, "setExpressBusModel")}
                         </div>
                     )}
                 </div>

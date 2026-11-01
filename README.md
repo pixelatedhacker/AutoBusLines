@@ -47,6 +47,11 @@ Auto Bus Lines automatically designs and constructs complete, functional bus tra
 - Between calls the bus takes the game's own route between the two stops, which normally follows the local loop but is not forced to.
 - Express buses queue behind local buses at shared kerbside stops. A mod that lets several buses board at once, such as [Concurrent Bus Boarding](https://mods.paradoxplaza.com/mods/152153/Windows), avoids this.
 
+### 🚌 Bus Models for New Lines
+- In Settings, **Local Line Buses** and **Express Line Buses** pick the bus model new lines run, from the unlocked buses the game offers for a bus line (asset-pack buses included).
+- **Any bus** (the default) keeps the game's random choice. A picked model is written to the line's vehicle list once the game has initialized the line, so it shows in the line's own "Select vehicles" panel and can be changed there afterwards.
+- Lines that already exist are not changed.
+
 ### 🎨 Vibrant Line Colors
 - **Per Station mode**: Each terminal hub anchors to a bold, distinct color family. Lines sharing a hub stay cohesive — never dull or washed-out.
 - **Random mode**: 16 hand-picked vivid transit colors (Electric Blue, Safety Orange, Vivid Emerald, Neon Violet, Crimson, Cyan, Amber, Deep Pink…).

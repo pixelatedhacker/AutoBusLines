@@ -389,6 +389,7 @@ namespace AutoBusLines
             _roadAssigner = World.GetOrCreateSystemManaged<RoadDepotAssigner>();
             _prefabSystem = World.GetOrCreateSystemManaged<PrefabSystem>();
             _nameSystem = World.GetOrCreateSystemManaged<Game.UI.NameSystem>();
+            CreateVehicleModelSelection();
 
             _busStopPrefabQuery = GetEntityQuery(new EntityQueryDesc
             {
@@ -593,6 +594,8 @@ namespace AutoBusLines
 
         protected override void OnUpdate()
         {
+            ApplyPendingVehicleModels();
+
             // Stage 1: Wait for any pending cleanup from previous runs to settle
             if (_generationStage == GenerationStage.WaitingForCleanup)
             {
@@ -634,7 +637,9 @@ namespace AutoBusLines
                         Color32? tourColor = (_plannedTourColors != null && _currentTourIndex < _plannedTourColors.Count)
                             ? _plannedTourColors[_currentTourIndex]
                             : (Color32?)null;
-                        if (CreateBusLine(_cachedBusLinePrefabEntity, _cachedBusLineRouteData, tour, nextLineNumber, 0, _currentTourIndex, tourColor))
+                        bool tourIsExpress = _plannedTourIsExpress != null && _currentTourIndex < _plannedTourIsExpress.Count
+                            && _plannedTourIsExpress[_currentTourIndex];
+                        if (CreateBusLine(_cachedBusLinePrefabEntity, _cachedBusLineRouteData, tour, nextLineNumber, 0, _currentTourIndex, tourColor, tourIsExpress))
                         {
                             _createdLineCount++;
                             float routeDistanceKm = CalculateTourLength(tour) / 1000f;
@@ -1276,6 +1281,11 @@ namespace AutoBusLines
             for (int i = 0; i < directTourColors.Count; i++)
             {
                 _plannedTourColors.Add(HexToColor(directTourColors[i]));
+            }
+            _plannedTourIsExpress = new List<bool>();
+            for (int i = 0; i < allTours.Count; i++)
+            {
+                _plannedTourIsExpress.Add(i >= localTourCount);
             }
             _cachedBusLinePrefabEntity = busLinePrefabEntity;
             _cachedBusLineRouteData = busLineRouteData;
