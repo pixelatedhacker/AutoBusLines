@@ -26,6 +26,9 @@ namespace AutoBusLines
         [JsonProperty("enabled")]
         public bool Enabled { get; set; } = true;
 
+        [JsonProperty("isExpress")]
+        public bool IsExpress { get; set; }
+
         [JsonProperty("stops")]
         public List<PlannedStopData> Stops { get; set; } = new List<PlannedStopData>();
     }

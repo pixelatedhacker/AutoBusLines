@@ -23,6 +23,7 @@ interface PlannedRoute {
     color: string;
     lengthKm: number;
     enabled: boolean;
+    isExpress?: boolean;
     stops: PlannedStop[];
 }
 
@@ -48,6 +49,8 @@ const deadEndThresholdBinding = bindValue<number>("autoBusLines", "deadEndDistan
 const minStopsBinding = bindValue<number>("autoBusLines", "minStopsPerLine", 6);
 const maxStopsBinding = bindValue<number>("autoBusLines", "maxStopsPerLine", 18);
 const maxRouteLengthBinding = bindValue<number>("autoBusLines", "maxRouteLength", 15000);
+const enableExpressLinesBinding = bindValue<boolean>("autoBusLines", "enableExpressLines", false);
+const expressStopSpacingBinding = bindValue<number>("autoBusLines", "expressStopSpacing", 1000);
 const stopDensityBinding = bindValue<string>("autoBusLines", "stopDensity", "Balanced");
 const targetSpacingBinding = bindValue<number>("autoBusLines", "targetStopSpacing", 200);
 const selectedPrefabBinding = bindValue<string>("autoBusLines", "selectedStopPrefab", "All");
@@ -288,6 +291,8 @@ export const PlanPanel: React.FC<PlanPanelProps> = ({ onClose }) => {
     const minStops = useValue(minStopsBinding);
     const maxStops = useValue(maxStopsBinding);
     const maxRouteLength = useValue(maxRouteLengthBinding);
+    const enableExpressLines = useValue(enableExpressLinesBinding);
+    const expressStopSpacing = useValue(expressStopSpacingBinding);
     const stopDensity = useValue(stopDensityBinding);
     const targetSpacing = useValue(targetSpacingBinding);
     const selectedPrefab = useValue(selectedPrefabBinding);
@@ -930,6 +935,53 @@ export const PlanPanel: React.FC<PlanPanelProps> = ({ onClose }) => {
                             ))}
                         </div>
                     </div>
+
+                    <div className={styles.settingsRow}>
+                        <div className={styles.settingInfo}>
+                            <span className={styles.settingTitle}>Express Lines</span>
+                            <span className={styles.settingDesc}>
+                                Add express lines over long loops (4 km+). They reuse the local stops but only call at transfer points and every so often.
+                            </span>
+                        </div>
+                        <div className={styles.settingControl}>
+                            <Checkbox
+                                isChecked={enableExpressLines}
+                                onValueToggle={(checked) => trigger("autoBusLines", "setEnableExpressLines", checked)}
+                            />
+                        </div>
+                    </div>
+
+                    {enableExpressLines && (
+                        <div className={styles.settingsRowStacked}>
+                            <div className={styles.settingInfo}>
+                                <span className={styles.settingTitle}>Express Stop Spacing</span>
+                                <span className={styles.settingDesc}>
+                                    Distance between express calls. Transfer stops can be called at sooner.
+                                </span>
+                            </div>
+                            <SliderInput
+                                value={expressStopSpacing || 1000}
+                                min={500}
+                                max={3000}
+                                step={100}
+                                unit="m"
+                                multiplier={1}
+                                onChange={(val) => trigger("autoBusLines", "setExpressStopSpacing", val)}
+                            />
+                            <div className={styles.presetGroup}>
+                                {[600, 800, 1000, 1500, 2000].map((dist) => (
+                                    <button
+                                        key={dist}
+                                        type="button"
+                                        className={`${styles.presetBtn} ${expressStopSpacing === dist ? styles.presetActive : ""}`}
+                                        onClick={() => trigger("autoBusLines", "setExpressStopSpacing", dist)}
+                                    >
+                                        {dist}m
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Stop Placement Defaults */}
@@ -1287,7 +1339,10 @@ export const PlanPanel: React.FC<PlanPanelProps> = ({ onClose }) => {
                                         style={{ backgroundColor: route.color }}
                                     />
                                     <div className={styles.routeInfo}>
-                                        <span className={styles.routeName}>{route.name}</span>
+                                        <span className={styles.routeName}>
+                                            {route.name}
+                                            {route.isExpress && <span className={styles.expressBadge}>EXPRESS</span>}
+                                        </span>
                                         <span className={styles.routeSub}>
                                             {activeStops} stops · {route.lengthKm} km
                                         </span>

@@ -1159,6 +1159,11 @@ namespace AutoBusLines
                 return;
             }
 
+            // Express lines go after the local ones, so a tour's index tells the plan which kind it is.
+            int localTourCount = allTours.Count;
+            if (Mod.setting != null && Mod.setting.EnableExpressLines)
+                allTours.AddRange(PlanExpressTours(allTours, Mod.setting.ExpressStopSpacing));
+
             if (planOnly)
             {
                 _plannedTours = new List<List<PlacedStop>>(allTours);
@@ -1174,14 +1179,16 @@ namespace AutoBusLines
                     int lineNumber = plannedRoutes.Count + 1;
                     float routeDistKm = CalculateTourLength(tour) / 1000f;
                     string hexColor = (t < tourColors.Count) ? tourColors[t] : GetLineHexColor(lineNumber);
+                    bool isExpress = t >= localTourCount;
 
                     var routeData = new PlannedRoute
                     {
                         Id = lineNumber,
-                        Name = $"Line {lineNumber}",
+                        Name = isExpress ? $"Express {lineNumber}" : $"Line {lineNumber}",
                         Color = hexColor,
                         LengthKm = (float)Math.Round(routeDistKm, 1),
-                        Enabled = true
+                        Enabled = true,
+                        IsExpress = isExpress
                     };
 
                     // First pass: collect street names and count occurrences on this tour

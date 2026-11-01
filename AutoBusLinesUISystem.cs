@@ -38,6 +38,8 @@ namespace AutoBusLines
         private ValueBinding<int> m_MinStopsPerLine;
         private ValueBinding<int> m_MaxStopsPerLine;
         private ValueBinding<int> m_MaxRouteLength;
+        private ValueBinding<bool> m_EnableExpressLines;
+        private ValueBinding<int> m_ExpressStopSpacing;
         private ValueBinding<string> m_StopDensity;
         private ValueBinding<int> m_TargetStopSpacing;
         private ValueBinding<string> m_SelectedStopPrefab;
@@ -65,6 +67,8 @@ namespace AutoBusLines
             AddBinding(m_MinStopsPerLine = new ValueBinding<int>(kGroup, "minStopsPerLine", s?.MinStopsPerLine ?? 6));
             AddBinding(m_MaxStopsPerLine = new ValueBinding<int>(kGroup, "maxStopsPerLine", s?.MaxStopsPerLine ?? 18));
             AddBinding(m_MaxRouteLength = new ValueBinding<int>(kGroup, "maxRouteLength", s?.MaxRouteLength ?? 15000));
+            AddBinding(m_EnableExpressLines = new ValueBinding<bool>(kGroup, "enableExpressLines", s?.EnableExpressLines ?? false));
+            AddBinding(m_ExpressStopSpacing = new ValueBinding<int>(kGroup, "expressStopSpacing", s?.ExpressStopSpacing ?? 1000));
             AddBinding(m_StopDensity = new ValueBinding<string>(kGroup, "stopDensity", (s?.StopDensity ?? StopDensityMode.Balanced).ToString()));
             AddBinding(m_TargetStopSpacing = new ValueBinding<int>(kGroup, "targetStopSpacing", s?.TargetStopSpacing ?? 200));
             AddBinding(m_SelectedStopPrefab = new ValueBinding<string>(kGroup, "selectedStopPrefab", s?.SelectedStopPrefab ?? "All"));
@@ -91,6 +95,8 @@ namespace AutoBusLines
             AddBinding(new TriggerBinding<int>(kGroup, "setMinStops", OnSetMinStops));
             AddBinding(new TriggerBinding<int>(kGroup, "setMaxStops", OnSetMaxStops));
             AddBinding(new TriggerBinding<int>(kGroup, "setMaxRouteLength", OnSetMaxRouteLength));
+            AddBinding(new TriggerBinding<bool>(kGroup, "setEnableExpressLines", OnSetEnableExpressLines));
+            AddBinding(new TriggerBinding<int>(kGroup, "setExpressStopSpacing", OnSetExpressStopSpacing));
             AddBinding(new TriggerBinding<string>(kGroup, "setStopDensity", OnSetStopDensity));
             AddBinding(new TriggerBinding<int>(kGroup, "setTargetSpacing", OnSetTargetSpacing));
             AddBinding(new TriggerBinding<string>(kGroup, "setStopPrefab", OnSetStopPrefab));
@@ -379,6 +385,29 @@ namespace AutoBusLines
             log.Info($"Set ExcludeDeadEnds: {value}");
         }
 
+        private void OnSetEnableExpressLines(bool value)
+        {
+            if (Mod.setting != null)
+            {
+                Mod.setting.EnableExpressLines = value;
+                Mod.setting.Apply();
+            }
+            m_EnableExpressLines.Update(value);
+            log.Info($"Set EnableExpressLines: {value}");
+        }
+
+        private void OnSetExpressStopSpacing(int value)
+        {
+            value = Math.Max(500, Math.Min(3000, value));
+            if (Mod.setting != null)
+            {
+                Mod.setting.ExpressStopSpacing = value;
+                Mod.setting.Apply();
+            }
+            m_ExpressStopSpacing.Update(value);
+            log.Info($"Set ExpressStopSpacing: {value}m");
+        }
+
         private void OnSetDeadEndThreshold(int value)
         {
             value = Math.Max(50, Math.Min(2000, value));
@@ -625,6 +654,8 @@ namespace AutoBusLines
             m_MinStopsPerLine?.Update(s.MinStopsPerLine);
             m_MaxStopsPerLine?.Update(s.MaxStopsPerLine);
             m_MaxRouteLength?.Update(s.MaxRouteLength);
+            m_EnableExpressLines?.Update(s.EnableExpressLines);
+            m_ExpressStopSpacing?.Update(s.ExpressStopSpacing);
             m_StopDensity?.Update(s.StopDensity.ToString());
             m_TargetStopSpacing?.Update(s.TargetStopSpacing);
             m_SelectedStopPrefab?.Update(s.SelectedStopPrefab);

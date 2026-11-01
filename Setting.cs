@@ -96,6 +96,14 @@ namespace AutoBusLines
         [SettingsUIHidden]
         public int MaxRouteLength { get; set; } = 15000;
 
+        // Express lines run over long local loops but call only at transfer points and roughly
+        // every ExpressStopSpacing metres. Off by default so plans are unchanged unless asked for.
+        [SettingsUIHidden]
+        public bool EnableExpressLines { get; set; } = false;
+
+        [SettingsUIHidden]
+        public int ExpressStopSpacing { get; set; } = 1000;
+
         private LineColorMode _lineColoring = LineColorMode.PerStation;
 
         [SettingsUIHidden]
@@ -190,6 +198,8 @@ namespace AutoBusLines
             MinStopsPerLine = 6;
             MaxStopsPerLine = 18;
             MaxRouteLength = 15000;
+            EnableExpressLines = false;
+            ExpressStopSpacing = 1000;
             StopDensity = StopDensityMode.Balanced;
             TargetStopSpacing = 200;
         }

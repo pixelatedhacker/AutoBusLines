@@ -44,6 +44,10 @@ namespace AutoBusLines
         }
 
         private const float MAX_AVG_STOP_SPACING = 1500f;   // a trunk line must average at least one stop per this many metres of loop
+        private const float EXPRESS_MIN_TOUR_LENGTH = 4000f; // only loops at least this long are worth an express service
+        private const int EXPRESS_MIN_STOPS = 4;            // an express line needs this many calls to be useful
+        private const float EXPRESS_MAX_KEPT_SHARE = 0.6f;  // an express that keeps more of the local stops than this is not express
+        private const float EXPRESS_TRANSFER_SPACING = 0.4f; // a transfer stop may be called at after this share of the express spacing
         private const float FEEDER_CLOSING_LIMIT = 4000f;   // longest stop-less drive allowed to close a feeder loop
         private const int LASTMILE_CANDIDATES = 8;        // insertion points re-checked against the real road graph
         private const float LASTMILE_MAX_DETOUR = 2500f;  // never wedge a stop in if it costs the line more than this
@@ -505,6 +509,74 @@ namespace AutoBusLines
 
             servedStopEntities = ctx.Served;
             return ctx.Tours;
+        }
+
+        // ------------------------------------------------------------------
+        // Express lines
+        // ------------------------------------------------------------------
+
+        // An express line runs over a long local loop but calls only at transfer points (station bays
+        // and stops another line also serves) and roughly every stopSpacing metres in between. It
+        // reuses the local loop's stops in the same order, so it places nothing new and takes no part
+        // in coverage: the local lines still serve every stop.
+        // Between two express calls the bus follows the game's own path between the stops, which on
+        // a grid normally stays on the local loop's roads but is not forced to.
+        private List<List<PlacedStop>> PlanExpressTours(List<List<PlacedStop>> localTours, float stopSpacing)
+        {
+            var expressTours = new List<List<PlacedStop>>();
+            stopSpacing = math.clamp(stopSpacing, 500f, 3000f);
+
+            var linesAtStop = new Dictionary<Entity, int>();
+            for (int t = 0; t < localTours.Count; t++)
+            {
+                var seen = new HashSet<Entity>();
+                for (int s = 0; s < localTours[t].Count; s++)
+                {
+                    var e = localTours[t][s].StopEntity;
+                    if (seen.Add(e))
+                        linesAtStop[e] = linesAtStop.TryGetValue(e, out int n) ? n + 1 : 1;
+                }
+            }
+
+            for (int t = 0; t < localTours.Count; t++)
+            {
+                var tour = localTours[t];
+                if (tour.Count < EXPRESS_MIN_STOPS * 2)
+                    continue;
+                float tourLength = CalculateTourLength(tour);
+                if (tourLength < EXPRESS_MIN_TOUR_LENGTH)
+                    continue;
+
+                var kept = new List<PlacedStop>();
+                float sinceLast = 0f;
+                for (int s = 0; s < tour.Count; s++)
+                {
+                    if (s > 0)
+                        sinceLast += math.distance(tour[s - 1].Position, tour[s].Position);
+
+                    var st = tour[s];
+                    bool isTransfer = st.IsStationBay ||
+                        (linesAtStop.TryGetValue(st.StopEntity, out int lines) && lines > 1);
+                    if (kept.Count == 0 || sinceLast >= stopSpacing ||
+                        (isTransfer && sinceLast >= stopSpacing * EXPRESS_TRANSFER_SPACING))
+                    {
+                        kept.Add(st);
+                        sinceLast = 0f;
+                    }
+                }
+
+                // The loop closes back to its first call; drop a last call that would sit right beside it.
+                if (kept.Count > 1 && math.distance(kept[kept.Count - 1].Position, kept[0].Position) < stopSpacing * 0.5f)
+                    kept.RemoveAt(kept.Count - 1);
+
+                if (kept.Count < EXPRESS_MIN_STOPS || kept.Count > tour.Count * EXPRESS_MAX_KEPT_SHARE)
+                    continue;
+
+                expressTours.Add(kept);
+                log.Info($"Express Line over local tour #{t + 1}: {kept.Count} of {tour.Count} stops ({tourLength:F0}m loop, spacing {stopSpacing:F0}m).");
+            }
+
+            return expressTours;
         }
 
         private void PrecomputeStopInfo(PlanContext ctx)

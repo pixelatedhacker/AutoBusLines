@@ -40,6 +40,13 @@ Auto Bus Lines automatically designs and constructs complete, functional bus tra
 - Multi-corridor planner with 2-Opt path smoothing generates smooth, circular loop lines.
 - Connects all routes directly to your nearest Bus Depots and Bus Terminals.
 
+### 🚀 Express Lines (optional)
+- Turn on **Express Lines** in Settings to add an express service over every local loop of 4 km or more.
+- An express line reuses its local loop's stops in the same order, calling only at transfer points (station bays and stops shared with another line) and roughly every **Express Stop Spacing** metres (500 m – 3 km, default 1 km).
+- It places no new stops and does not count toward coverage, so the local lines still serve every stop. Express lines show an **EXPRESS** badge in the planner and can be toggled like any other line.
+- Between calls the bus takes the game's own route between the two stops, which normally follows the local loop but is not forced to.
+- Express buses queue behind local buses at shared kerbside stops. A mod that lets several buses board at once, such as [Concurrent Bus Boarding](https://mods.paradoxplaza.com/mods/152153/Windows), avoids this.
+
 ### 🎨 Vibrant Line Colors
 - **Per Station mode**: Each terminal hub anchors to a bold, distinct color family. Lines sharing a hub stay cohesive — never dull or washed-out.
 - **Random mode**: 16 hand-picked vivid transit colors (Electric Blue, Safety Orange, Vivid Emerald, Neon Violet, Crimson, Cyan, Amber, Deep Pink…).
