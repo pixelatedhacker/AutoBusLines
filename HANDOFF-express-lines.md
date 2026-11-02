@@ -1,8 +1,8 @@
 # Handoff: express lines
 
 Branch `express-lines` on the fork `pixelatedhacker/AutoBusLines`, based on upstream
-`amitkrishnanm/AutoBusLines` at `30059e1` (2.0.6). Feature commit: `1d57d15`. No pull request to
-upstream has been opened.
+`amitkrishnanm/AutoBusLines` at `30059e1` (2.0.6). Feature commits: `1d57d15` (express lines) and
+`302c21e` (bus model picker, see below). No pull request to upstream has been opened.
 
 Companion work: branch `skip-stops-without-demand` on `pixelatedhacker/concurrent-bus-boarding`.
 Express buses share kerbside stops with local buses and queue behind them; Concurrent Bus Boarding
@@ -10,11 +10,11 @@ lets several buses board at once, and that branch lets a bus with no demand at a
 
 ## Status
 
-- UI: `tsc --noEmit -p ui` passes (run with `npm ci --ignore-scripts`; `npm run build` needs
-  `CSII_USERDATAPATH` from the CS2 modding toolchain, so webpack was not run).
-- C#: **not compiled, not tested in game.** The machine it was written on had no .NET SDK and no
-  game install.
-- Off by default, so plans are unchanged unless the player turns it on.
+- Built on Windows with the CS2 modding toolchain (2026-11-01): `tsc --noEmit` passes, and the
+  Release `dotnet build` plus webpack succeed and deploy to the local `Mods\AutoBusLines` folder.
+- **Not tested in game yet**, neither express lines nor the bus model picker.
+- Both are off by default (Express Lines off, both bus models "Any bus"), so plans and lines are
+  unchanged unless the player turns them on.
 
 ## What it does
 
@@ -32,6 +32,28 @@ Express tours are appended after the local ones (`localTourCount` in `ExecuteGen
 "Express N", flagged `IsExpress` in `PlannedRoute`, and badged in the planner. They take no part in
 `ctx.Served` or coverage, and they are built by the same `CreateBusLine` as local lines.
 
+## Bus model picker (`302c21e`)
+
+Settings gain **Local Line Buses** and **Express Line Buses** (the express row shows only while
+Express Lines is on). Each is a card grid of the unlocked bus prefabs the game offers a bus line,
+the same list as a line's own "Select vehicles" section, plus **Any bus** (empty string, the default
+and the previous behaviour). Choices are stored by prefab name in `Setting.LocalBusModel` /
+`ExpressBusModel`.
+
+- `BusLineGenerator.VehicleModels.cs` lists models with the game's `TransportVehicleSelectData`
+  (`ListVehicles` with the bus line prefab's `TransportType` and `SizeClass`,
+  `PublicTransportPurpose.TransportLine`, `ignoreTheme: true`). Its query excludes `Locked` prefabs.
+- `Routes.InitializeSystem` clears the `VehicleModel` buffer of every `Created` route and picks a
+  random vehicle, so writing a model in `CreateBusLine` would be lost. Instead, `CreateBusLine`
+  queues the route (`QueueVehicleModel`), and `ApplyPendingVehicleModels` at the start of
+  `OnUpdate` writes `{ m_PrimaryPrefab = model }` once the route has lost `Created`. Missing or
+  deleted routes are dropped from the queue.
+- Whether a tour is express is carried beside its colour (`_plannedTourIsExpress`) through both the
+  plan and the direct build paths.
+- A saved model that is no longer available (asset pack removed, prefab locked) logs a warning and
+  falls back to the game's random choice.
+- Lines that already exist are not changed.
+
 ## What changed
 
 | File | Change |
@@ -43,6 +65,9 @@ Express tours are appended after the local ones (`localTourCount` in `ExecuteGen
 | `AutoBusLinesUISystem.cs` | `enableExpressLines` / `expressStopSpacing` bindings, `setEnableExpressLines` / `setExpressStopSpacing` triggers (spacing clamped 500–3000), refresh on settings load. |
 | `ui/src/mods/PlanPanel.tsx`, `PlanPanel.module.scss` | Checkbox, spacing slider with presets, EXPRESS badge on route rows. |
 | `README.md` | Feature section, including the routing and stop-queueing caveats. |
+| `BusLineGenerator.VehicleModels.cs` (new) | `ListBusModels`, `QueueVehicleModel`, `ApplyPendingVehicleModels` (`302c21e`). |
+| `BusLineGenerator.cs`, `BusLineGenerator.RouteCreation.cs` | Vehicle model selection set up in `OnCreate`, applied each `OnUpdate`; `CreateBusLine` takes `isExpress` and queues the model. |
+| `Setting.cs`, `AutoBusLinesUISystem.cs`, `ui/src/mods/PlanPanel.tsx` | `LocalBusModel` / `ExpressBusModel`; `busModelOptions` binding (name, localized label, thumbnail) and set triggers; the two card grids. |
 
 ## Known gaps and open questions
 
@@ -66,16 +91,27 @@ Express tours are appended after the local ones (`localTourCount` in `ExecuteGen
 ## How to finish
 
 1. Windows with the CS2 modding toolchain: `cd ui && npm install && npm run build`, then
-   `dotnet build` from the repository root (see the README).
+   `dotnet build` from the repository root (see the README). Already done once; see "Local setup
+   used" for the workarounds it needed.
 2. In game: Settings → turn on Express Lines → Calculate in Lines Planner on a city with long loops.
    Check express lines appear with the badge, stop counts look right, and toggling works.
 3. Build Selected; watch an express bus. Confirm it skips the local-only stops, and note where its
    route leaves the local loop (gap 1).
 4. Run with Concurrent Bus Boarding installed, with and without its "Let buses pass stops with no
    demand" option, and compare express travel times.
-5. If it holds up, open a pull request to `amitkrishnanm/AutoBusLines`.
+5. Bus models: check the two grids fill with the city's unlocked buses (thumbnails and localized
+   names, asset-pack buses included). Pick a model, build lines from a plan and with plan mode off,
+   and confirm each new line's "Select vehicles" panel shows the pick and that model is dispatched.
+   Then set "Any bus" and confirm lines get a random model as before.
+6. If it holds up, open a pull request to `amitkrishnanm/AutoBusLines`.
 
 ## Local setup used
 
-The fork clones on the authoring machine had `core.hooksPath` set to `.git/hooks` per repository to
-bypass a global commit hook; this is local config only and is not part of the repository.
+- The fork clones on the Mac had `core.hooksPath` set to `.git/hooks` per repository to bypass a
+  global commit hook; this is local config only and is not part of the repository.
+- The Windows build (2026-11-01) needed the `CSII_*` user environment variables loaded into the
+  shell (webpack fails with "CSII_USERDATAPATH not set" otherwise) and
+  `DOTNET_ROLL_FORWARD=Major`, because the toolchain's ModPostProcessor targets .NET 6 and only the
+  .NET 8 SDK was installed.
+- In the game's playset, disable the subscribed Paradox Mods copy (161531) so the local build in
+  `Mods\AutoBusLines` is the one that loads.
